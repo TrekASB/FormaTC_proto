@@ -1,0 +1,9 @@
+{
+  "url": "https://trekasb.github.io/FormaTC_proto/apps/forma-connect-bridge.html",
+  "title": "Forma → Trimble Connect",
+  "icon": "https://trekasb.github.io/FormaTC_proto/assets/norconsult-logo.svg",
+  "description": "Selvstendig extension for Autodesk Forma til Trimble Connect filoverføring.",
+  "extensionType": [
+    "3dviewer"
+  ]
+}
