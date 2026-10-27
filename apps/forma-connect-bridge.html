@@ -4,7 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Forma → Trimble Connect</title>
-<script type="module" src="trimble-tcps-bridge.js?v=20261020-syncfilter"></script>
+<script src="https://components.connect.trimble.com/trimble-connect-workspace-api/index.js"></script>
+<script type="module" src="trimble-tcps-bridge.js?v=20261027-standalone"></script>
 <style>
 :root{--blue:#0057B8;--bg:#f3f5f8;--card:#fff;--border:#d9e0ea;--text:#101828;--muted:#667085;--green:#18864b;--red:#b42318;--amber:#b54708;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text)}body{padding:16px}.wrap{max-width:1280px;margin:0 auto}
@@ -263,9 +264,8 @@ async function waitForTcpsBridge(){
 
 async function initTrimble(){
   try{
-    const bridge=window.parent?.BIMToolsBridge;
-    if(!bridge)throw new Error('BIMToolsBridge finnes ikke. Åpne verktøyet fra Norconsult BIM-tools i Trimble Connect.');
-    TC_API=await bridge.connect(onBridgeEvent);
+    if(!window.TrimbleConnectWorkspace?.connect)throw new Error('Trimble Workspace SDK er ikke lastet. Åpne extensionen i Trimble Connect.');
+    TC_API=await window.TrimbleConnectWorkspace.connect(window.parent,onBridgeEvent);
     TC_PROJECT=await TC_API.project.getProject();
     setChip('tcChip','Trimble: tilkoblet','ok');
     setChip('projectChip','Trimble-prosjekt: '+(TC_PROJECT?.name||TC_PROJECT?.id||'ukjent'),'ok');
