@@ -272,7 +272,15 @@ async function initTrimble(){
     log('Tilkoblet Trimble Connect-prosjekt: '+(TC_PROJECT?.name||TC_PROJECT?.id),'ok');
     const token=await requestTrimbleToken(false);
     if(token)await loadTrimbleRoot();
-  }catch(err){setChip('tcChip','Trimble: ikke tilkoblet','bad');log(err.message||String(err),'error');}
+  }catch(err){
+    if(TC_API&&TC_PROJECT){
+      setChip('tcChip','Trimble: tilkoblet – API-tilgang må kontrolleres','warn');
+      log('Workspace-tilkobling OK, men et ekstra Trimble API-kall feilet: '+(err.message||String(err)),'error');
+    }else{
+      setChip('tcChip','Trimble: ikke tilkoblet','bad');
+      log(err.message||String(err),'error');
+    }
+  }
 }
 function tokenFromPayload(args){const d=args?.data??args;if(typeof d==='string')return d;return d?.accessToken||d?.access_token||d?.token||null;}
 function onBridgeEvent(event,args){
@@ -305,9 +313,11 @@ function getClientId(){return $('clientId').value.trim();}
 function saveClient(){const id=getClientId();if(!id){log('Skriv inn APS Client ID.','error');return;}localStorage.setItem('norconsult_shared_aps_client_id',id);log('APS Client ID lagret lokalt i nettleseren.','ok');}
 async function waitForLocalApsCallback(state){
   const deadline=Date.now()+120000;
+  let helperFailureLogged=false;
   while(Date.now()<deadline){
     try{
       const r=await fetch('http://localhost:3000/api/forge/callback/status?state='+encodeURIComponent(state),{cache:'no-store'});
+      if(!r.ok && !helperFailureLogged){log('OAuth-helper returnerte HTTP '+r.status+'. Sjekk at riktig helper kjører på port 3000.','error');helperFailureLogged=true;}
       if(r.ok){
         const data=await r.json();
         if(data&&data.ready&&data.payload){
@@ -315,7 +325,13 @@ async function waitForLocalApsCallback(state){
           return;
         }
       }
-    }catch(_){}
+    }catch(err){
+      if(!helperFailureLogged){
+        log('Kan ikke nå OAuth-helper på localhost:3000. Start local-helper/02_START.bat på din PC og kontroller at http://localhost:3000/ åpner.','error');
+        setChip('helperChip','OAuth helper: localhost utilgjengelig','bad');
+        helperFailureLogged=true;
+      }
+    }
     await new Promise(resolve=>setTimeout(resolve,1000));
   }
   log('Ingen Autodesk-callback mottatt fra localhost-helper innen 2 minutter. Kontroller at helperen kjører og prøv igjen.','error');
@@ -838,7 +854,7 @@ try{
 }catch(_){};
 
 $('callbackUrl').value=APS_CALLBACK;$('clientId').value=localStorage.getItem('norconsult_shared_aps_client_id')||'';
-$('saveClient').onclick=saveClient;$('loginAps').onclick=()=>loginAps().catch(e=>log(e.message,'error'));$('testHelper').onclick=()=>{window.open('http://localhost:3000/','formaOauthHelper','width=560,height=420,resizable=yes,scrollbars=yes');log('Åpnet localhost-helper. Hvis siden ikke åpner, start local-helper først.');};$('logoutAps').onclick=logoutAps;
+$('saveClient').onclick=saveClient;$('loginAps').onclick=()=>loginAps().catch(e=>log(e.message,'error'));$('testHelper').onclick=async()=>{try{const r=await fetch('http://localhost:3000/',{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);setChip('helperChip','OAuth helper: tilgjengelig','ok');log('OAuth-helper på localhost:3000 svarer.','ok');}catch(e){setChip('helperChip','OAuth helper: utilgjengelig','bad');log('OAuth-helper svarer ikke: '+(e.message||e)+'. Kjør local-helper/01_INSTALL.bat og 02_START.bat på PC-en.','error');}};$('logoutAps').onclick=logoutAps;
 $('hubSelect').onchange=e=>loadProjects(e.target.value);$('projectSelect').onchange=e=>selectProject(e.target.value);$('reloadForma').onclick=loadHubs;
 $('goUp').onclick=goUp;$('refreshFolder').onclick=refreshFolder;
 $('selectVisibleFiles').onchange=e=>{for(const item of currentFormaItems){if(e.target.checked&&isImportEligible(item))selectedItems.set(item.id,item);else selectedItems.delete(item.id);}renderItems(currentFormaEntries,{loadMeta:false});updateSelection();};
